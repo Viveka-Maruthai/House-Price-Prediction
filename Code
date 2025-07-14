@@ -1,0 +1,75 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import zipfile, os
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import numpy as np
+
+zip_path = "HPP.zip"                 # your uploaded zip file
+extract_dir = "house_price_data"    # folder to extract into
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall(extract_dir)
+
+print("Files extracted:", os.listdir(extract_dir))
+
+csv_file = "House Price Prediction Dataset.csv"  # update this if filename differs
+csv_path = os.path.join(extract_dir, csv_file)
+df = pd.read_csv(csv_path)
+print(df.head())  # preview the data
+
+df_encoded = df.copy()
+# Convert text columns to numbers
+label_encoders = {}
+for col in ['Location', 'Condition', 'Garage']:
+    le = LabelEncoder()
+    df_encoded[col] = le.fit_transform(df_encoded[col])
+    label_encoders[col] = le
+
+if 'Id' in df_encoded.columns:
+    df_encoded.drop('Id', axis=1, inplace=True)
+
+plt.figure(figsize=(10, 6))
+sns.heatmap(df_encoded.corr(), annot=True, cmap='coolwarm')
+plt.title("Correlation Heatmap")
+plt.show()
+
+model = RandomForestRegressor(random_state=42)
+model.fit(X_train, y_train)
+# Predict house prices
+y_pred = model.predict(X_test)
+
+plt.figure(figsize=(10, 5))
+plt.bar(range(20), y_test.values[:20], alpha=0.6, label="Actual")
+plt.bar(range(20), y_pred[:20], alpha=0.6, label="Predicted")
+plt.title("Actual vs Predicted House Prices")
+plt.xlabel("Sample")
+plt.ylabel("Price")
+plt.legend()
+plt.show()
+
+# Convert prices to 4 quantile-based bins
+y_test_bins = pd.qcut(y_test, q=4, labels=False)
+y_pred_bins = pd.qcut(pd.Series(y_pred), q=4, labels=False)
+# Generate confusion matrix
+cm = confusion_matrix(y_test_bins, y_pred_bins)
+# Plot it
+disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+disp.plot(cmap='Blues')
+plt.title("Confusion Matrix (Price Ranges)")
+plt.show()
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
+# Calculate metrics
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_test, y_pred)
+# Print results
+print(f" R² Score       : {r2:.4f}")
+print(f" MAE (Error)    : {mae:.2f}")
+print(f" MSE (Error²)   : {mse:.2f}")
+print(f" RMSE (Error)   : {rmse:.2f}")
